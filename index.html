@@ -1,0 +1,116 @@
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+  <title>Document</title>
+</head>
+<body>
+  <form id="myForm">
+    Import .html file: <input type="file" name="file">
+    <input type="submit" value="Submit">
+  </form>
+  <form id="csv">
+    Translated CSV file: <input type="file" name="csv">
+    <input type="submit" value="Submit">
+  </form>
+  <div id ="frame" />
+  <script>
+      $('#myForm').submit(function(e) {
+        e.preventDefault();
+        // Get all the forms elements and their values in one step
+        var htmlFile = this.elements[0].files[0];
+        let textsArray = [];
+        parser = new DOMParser()
+        var fileReader = new FileReader();
+        fileReader.onload = function(fileLoadedEvent) 
+        {
+            var textFromFileLoaded = fileLoadedEvent.target.result;
+            let doc = parser.parseFromString(textFromFileLoaded, "text/html");
+            window.htmlDocument = doc;
+            $(doc.body).find('span').each((i,e) => {
+              textsArray[i] = { id: i, text: $(e).text(), translation: $(e).html()}
+              });
+            downloadCSV(textsArray)
+        };
+        fileReader.readAsText(htmlFile, "UTF-8");
+      })
+      
+      $('#csv').submit(function(e) {
+        e.preventDefault();
+        // Get all the forms elements and their values in one step
+        var csvFile = this.elements[0].files[0];
+        var csvFileReader = new FileReader();
+        csvFileReader.onload = function(fileLoadedEvent) 
+        {
+            var textFromFileLoaded = fileLoadedEvent.target.result;
+            var translatedArray = csvToArray(textFromFileLoaded);
+            $(window.htmlDocument).find('span').each((i,e) => {
+                console.warn("original:",$(e).text(),"new:", translatedArray[i + 1][2])
+                $(e).text(translatedArray[i + 1][2]);
+              });
+            $("#frame").append(window.htmlDocument.body);
+        };
+        csvFileReader.readAsText(csvFile, "UTF-8");
+      })
+        
+      function convertArrayOfObjectsToCSV(args) {  
+        var result, ctr, keys, columnDelimiter, lineDelimiter, data;
+
+        data = args.data || null;
+        if (data == null || !data.length) {
+            return null;
+        }
+        columnDelimiter = args.columnDelimiter || ',';
+        lineDelimiter = args.lineDelimiter || '\n';
+
+        keys = Object.keys(data[0]);
+
+        result = '';
+        result += keys.join(columnDelimiter);
+        result += lineDelimiter;
+
+        data.forEach(function(item) {
+            ctr = 0;
+            keys.forEach(function(key) {
+                if (ctr > 0) result += columnDelimiter;
+
+                result += item[key];
+                ctr++;
+            });
+            result += lineDelimiter;
+        });
+
+        return result;
+    }
+
+    function downloadCSV(data) {  
+        var data, filename, link;
+        var csv = convertArrayOfObjectsToCSV({
+            data: data
+        });
+        if (csv == null) return;
+
+        filename = 'export.csv';
+
+        if (!csv.match(/^data:text\/csv/i)) {
+            csv = 'data:text/csv;charset=utf-8,' + csv;
+        }
+        data = encodeURI(csv);
+
+        link = document.createElement('a');
+        link.setAttribute('href', data);
+        link.setAttribute('download', filename);
+        link.click();
+    }
+
+    function csvToArray (csv) {
+      rows  = csv.split("\n");
+      return rows.map(function (row) {
+        return row.split(",");
+      });
+  };
+</script>
+</body>
+</html>
